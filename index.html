@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Lab 4 Simple (with Save)</title>
+  <title>Registration</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -38,7 +38,7 @@
       <input type="file" id="photo" accept="image/*">
     </label><br>
 
-    <button type="submit">Add Student</button>
+    <button type="submit" id="submitBtn">Save Student</button>
   </form>
 
   <h2>Profile Cards</h2>
@@ -60,8 +60,10 @@
     const form = document.getElementById("regForm");
     const cards = document.getElementById("cards");
     const tableBody = document.querySelector("#summary tbody");
+    const submitBtn = document.getElementById("submitBtn");
 
     const STORAGE_KEY = "lab4_profiles";
+    let editingId = null; 
 
     function genId() {
       return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -86,7 +88,6 @@
     }
 
     function renderProfile(p) {
-
       const card = document.createElement("div");
       card.className = "card";
       card.dataset.id = p.id;
@@ -95,6 +96,7 @@
         <h3>${p.first} ${p.last}</h3>
         <p>${p.prog} - Year ${p.year}</p>
         <p>${p.email}</p>
+        <button class="edit">Edit</button>
         <button class="remove">Remove</button>
       `;
       cards.prepend(card);
@@ -108,11 +110,23 @@
       `;
       tableBody.prepend(row);
 
+    
       card.querySelector(".remove").addEventListener("click", () => {
         card.remove();
         row.remove();
         const list = loadProfiles().filter(x => x.id !== p.id);
         saveProfiles(list);
+      });
+
+     
+      card.querySelector(".edit").addEventListener("click", () => {
+        document.getElementById("first").value = p.first;
+        document.getElementById("last").value = p.last;
+        document.getElementById("email").value = p.email;
+        document.getElementById("prog").value = p.prog;
+        document.getElementById("year").value = p.year;
+        editingId = p.id; 
+        submitBtn.textContent = "Update Student"; 
       });
     }
 
@@ -136,18 +150,33 @@
 
       if (!first || !last || !email || !prog || !year) return;
 
-      let photoData = "https://placehold.co/100";
-      if (photoInput.files && photoInput.files[0]) {
-        photoData = await fileToDataURL(photoInput.files[0]);
+      let profiles = loadProfiles();
+
+      if (editingId) {
+        profiles = await Promise.all(profiles.map(async (p) => {
+          if (p.id === editingId) {
+            let photoData = p.photo; 
+            if (photoInput.files && photoInput.files[0]) {
+              photoData = await fileToDataURL(photoInput.files[0]);
+            }
+            return { ...p, first, last, email, prog, year, photo: photoData };
+          }
+          return p;
+        }));
+        saveProfiles(profiles);
+        editingId = null;
+        submitBtn.textContent = "Save Student"; 
+      } else {
+        let photoData = "https://placehold.co/100";
+        if (photoInput.files && photoInput.files[0]) {
+          photoData = await fileToDataURL(photoInput.files[0]);
+        }
+        const profile = { id: genId(), first, last, email, prog, year, photo: photoData };
+        profiles.unshift(profile);
+        saveProfiles(profiles);
       }
 
-      const profile = { id: genId(), first, last, email, prog, year, photo: photoData };
-
-      const list = loadProfiles();
-      list.unshift(profile);
-      saveProfiles(list);
-
-      renderProfile(profile);
+      renderAll();
       form.reset();
     });
   </script>
