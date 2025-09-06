@@ -1,1 +1,155 @@
-<!-- Test commit: checking GitHub connection -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lab 4 Simple (with Save)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Student Registration</h1>
+  <form id="regForm">
+    <label>First Name:
+      <input type="text" id="first" required>
+    </label><br>
+
+    <label>Last Name:
+      <input type="text" id="last" required>
+    </label><br>
+
+    <label>Email:
+      <input type="email" id="email" required>
+    </label><br>
+
+    <label>Programme:
+      <input type="text" id="prog" required>
+    </label><br>
+
+    <label>Year:
+      <select id="year" required>
+        <option value="">--Choose--</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </label><br>
+
+    <label>Photo:
+      <input type="file" id="photo" accept="image/*">
+    </label><br>
+
+    <button type="submit">Add Student</button>
+  </form>
+
+  <h2>Profile Cards</h2>
+  <div id="cards"></div>
+
+  <h2>Summary Table</h2>
+  <table border="1" id="summary">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Programme</th>
+        <th>Year</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const form = document.getElementById("regForm");
+    const cards = document.getElementById("cards");
+    const tableBody = document.querySelector("#summary tbody");
+
+    const STORAGE_KEY = "lab4_profiles";
+
+    function genId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+    }
+
+    function loadProfiles() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+      catch { return []; }
+    }
+
+    function saveProfiles(list) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+
+    function fileToDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderProfile(p) {
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.dataset.id = p.id;
+      card.innerHTML = `
+        <img src="${p.photo}" alt="photo" width="100">
+        <h3>${p.first} ${p.last}</h3>
+        <p>${p.prog} - Year ${p.year}</p>
+        <p>${p.email}</p>
+        <button class="remove">Remove</button>
+      `;
+      cards.prepend(card);
+
+      const row = document.createElement("tr");
+      row.dataset.id = p.id;
+      row.innerHTML = `
+        <td>${p.first} ${p.last}</td>
+        <td>${p.prog}</td>
+        <td>${p.year}</td>
+      `;
+      tableBody.prepend(row);
+
+      card.querySelector(".remove").addEventListener("click", () => {
+        card.remove();
+        row.remove();
+        const list = loadProfiles().filter(x => x.id !== p.id);
+        saveProfiles(list);
+      });
+    }
+
+    function renderAll() {
+      cards.innerHTML = "";
+      tableBody.innerHTML = "";
+      loadProfiles().forEach(renderProfile);
+    }
+
+    window.addEventListener("DOMContentLoaded", renderAll);
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const first = document.getElementById("first").value.trim();
+      const last  = document.getElementById("last").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const prog  = document.getElementById("prog").value.trim();
+      const year  = document.getElementById("year").value;
+      const photoInput = document.getElementById("photo");
+
+      if (!first || !last || !email || !prog || !year) return;
+
+      let photoData = "https://placehold.co/100";
+      if (photoInput.files && photoInput.files[0]) {
+        photoData = await fileToDataURL(photoInput.files[0]);
+      }
+
+      const profile = { id: genId(), first, last, email, prog, year, photo: photoData };
+
+      const list = loadProfiles();
+      list.unshift(profile);
+      saveProfiles(list);
+
+      renderProfile(profile);
+      form.reset();
+    });
+  </script>
+</body>
+</html>
